@@ -42,6 +42,18 @@ else
     echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL:-http://localhost:8080}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
     echo "window.DRAWIO_SERVER_URL = window.DRAWIO_BASE_URL + '/';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 fi
+# Dynamically update Tomcat context path if DRAWIO_SERVER_URL ends in a subpath
+CONTEXT_PATH=$(echo "${DRAWIO_SERVER_URL}" | awk -F'/' '{print "/"$NF}' | sed 's/\/$//')
+
+if [ -n "$DRAWIO_SERVER_URL" ] && [ "$CONTEXT_PATH" != "/" ]; then
+  echo "Updating Tomcat context path to '${CONTEXT_PATH}'"
+  xmlstarlet ed -P -S -L \
+    -u '/Server/Service/Engine/Host/Context/@path' -v "${CONTEXT_PATH}" \
+    -u '/Server/Service/Engine/Host/Context/@docBase' -v 'draw' \
+    conf/server.xml
+else
+  echo "Tomcat context remains at root '/'"
+fi
 #DRAWIO_VIEWER_URL is path to the viewer js, e.g. https://www.example.com/js/viewer.min.js
 echo "window.DRAWIO_VIEWER_URL = '${DRAWIO_VIEWER_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #DRAWIO_LIGHTBOX_URL Replace with your lightbox URL, eg. https://www.example.com
