@@ -35,15 +35,19 @@ elif [[ "${EXPORT_URL}" ]]; then
 fi
 #DRAWIO_SERVER_URL is the new URL of the deployment, e.g. https://www.example.com/drawio/
 #DRAWIO_BASE_URL is still used by viewer, lightbox and embed. For backwards compatibility, DRAWIO_SERVER_URL is set to DRAWIO_BASE_URL if not specified.
-if [[ "${DRAWIO_SERVER_URL}" ]]; then
-    echo "window.DRAWIO_SERVER_URL = '${DRAWIO_SERVER_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-    echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL:-${DRAWIO_SERVER_URL:0:$((${#DRAWIO_SERVER_URL}-1))}}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+# Strip trailing slash from DRAWIO_SERVER_URL to get base URL
+if [[ -n "$DRAWIO_SERVER_URL" ]]; then
+  DRAWIO_BASE_URL_VALUE="${DRAWIO_SERVER_URL%/}"
 else
-    echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL:-http://localhost:8080}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-    echo "window.DRAWIO_SERVER_URL = window.DRAWIO_BASE_URL + '/';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+  DRAWIO_BASE_URL_VALUE="http://localhost:8080"
 fi
+
+# Write it to PreConfig.js
+echo "window.DRAWIO_SERVER_URL = '${DRAWIO_SERVER_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL_VALUE}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+
 # Dynamically update Tomcat context path if DRAWIO_SERVER_URL ends in a subpath
-CONTEXT_PATH=$(echo "${DRAWIO_SERVER_URL}" | awk -F'/' '{print "/"$NF}' | sed 's/\/$//')
+CONTEXT_PATH=$(echo "${DRAWIO_SERVER_URL}" | awk -F'/' '{print "/"$NF}' | sed -E 's/[?#].*$//;s/\/$//')
 
 if [ -n "$DRAWIO_SERVER_URL" ] && [ "$CONTEXT_PATH" != "/" ]; then
   echo "Updating Tomcat context path to '${CONTEXT_PATH}'"
