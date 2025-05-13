@@ -73,10 +73,6 @@ Notice that mapping port 80 to container's port 80 allows certbot to work in sta
 
 Configuration is managed by `DRAWIO_*` environment variables. For a list of these variables, check the `docker-entrypoint.sh` file in the `main` directory. For example, these variables allow enabling integration with Google Drive, OneDrive, ...
 
-## SOC 2
-
-This repo is not covered by the JGraph SOC 2 process.
-
 ## Reference
 
 * <https://github.com/jgraph/drawio>
