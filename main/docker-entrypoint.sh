@@ -62,7 +62,7 @@ fi
 echo "window.DRAWIO_VIEWER_URL = '${DRAWIO_VIEWER_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #DRAWIO_LIGHTBOX_URL Replace with your lightbox URL, eg. https://www.example.com
 echo "window.DRAWIO_LIGHTBOX_URL = '${DRAWIO_LIGHTBOX_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-echo "window.DRAW_MATH_URL = 'math/es5';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+echo "window.DRAW_MATH_URL = 'math4/es5';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #Custom draw.io configurations. For more details, https://www.drawio.com/doc/faq/configure-diagram-editor
 echo "window.DRAWIO_CONFIG = ${DRAWIO_CONFIG:-null};" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #Real-time configuration
@@ -124,7 +124,6 @@ cat $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "Init PostConfig.js"
 
 #null'ing of global vars need to be after init.js
-echo "window.VSD_CONVERT_URL = null;" > $CATALINA_HOME/webapps/draw/js/PostConfig.js
 echo "window.ICONSEARCH_PATH = null;" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 echo "EditorUi.enableLogging = false; //Disable logging" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 
