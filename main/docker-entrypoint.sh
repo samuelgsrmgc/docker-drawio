@@ -47,9 +47,14 @@ echo "window.DRAWIO_SERVER_URL = '${DRAWIO_SERVER_URL}';" >> $CATALINA_HOME/weba
 echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL_VALUE}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 
 # Dynamically update Tomcat context path if DRAWIO_SERVER_URL ends in a subpath
-CONTEXT_PATH=$(echo "${DRAWIO_SERVER_URL}" | awk -F'/' '{print "/"$NF}' | sed -E 's/[?#].*$//;s/\/$//')
+URL_PATH=$(echo "${DRAWIO_SERVER_URL}" | sed -E 's|^https?://[^/]+||; s|[?#].*$||; s|/$||')
+if [ -z "$URL_PATH" ]; then
+  CONTEXT_PATH=""
+else
+  CONTEXT_PATH="/$(basename "$URL_PATH")"
+fi
 
-if [ -n "$DRAWIO_SERVER_URL" ] && [ "$CONTEXT_PATH" != "/" ]; then
+if [ -n "$DRAWIO_SERVER_URL" ] && [ -n "$CONTEXT_PATH" ]; then
   echo "Updating Tomcat context path to '${CONTEXT_PATH}'"
   xmlstarlet ed -P -S -L \
     -u '/Server/Service/Engine/Host/Context/@path' -v "${CONTEXT_PATH}" \
