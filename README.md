@@ -52,6 +52,7 @@ If you're running `Docker Toolbox` then start a web browser session to <http://1
 * **COUNTRY_CODE**: Country code to be used as certificate "C" record; default `FR`
 * **KEYSTORE_PASS**: ".keystore"/.jks" store password; default `V3ry1nS3cur3P4ssw0rd`
 * **KEY_PASS**: Private key password; default `<ref:KEYSTORE_PASS>`
+* **ENABLE_DRAWIO_PROXY**: Set to `1` to enable the `/proxy` endpoint (ProxyServlet) which allows embedding images from external URLs; default disabled
 
 ## HTTPS SSL Certificate via Let's Encrypt
 
