@@ -2,3 +2,4 @@ dist/
 .jenkins
 deploy/spinnaker/
 /local-dev/PreConfig.js
+.claude/settings.local.json
