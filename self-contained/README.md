@@ -10,8 +10,8 @@ The best option for Windows users is to copy the contents of `Windowsdrive:/Wind
 
 You can customize the application by setting the following environment variables.
 
-* `DRAWIO_SERVER_URL`: Your deployment base URL. For example, `https://drawio.example.com/` or `https://www.example.com/drawio/` if it is deployed into a folder. **Note**: Must end with `/`
-* `DRAWIO_BASE_URL`: Your deployment base URL but used with the viewer, lightbox and embed. Usually the same as `DRAWIO_SERVER_URL` but does **not** end with `/`.
+* `DRAWIO_SERVER_URL`: Your deployment URL with a trailing slash. For example, `https://drawio.example.com/`, or `https://www.example.com/drawio/` if deployed into a sub-path. Setting this alone is enough — `DRAWIO_BASE_URL` is derived from it by stripping the trailing slash. The entrypoint also uses the sub-path (if any) to update the Tomcat context path automatically.
+* `DRAWIO_BASE_URL`: (Optional, backwards-compat) Same URL without the trailing slash, used by the viewer/lightbox/embed code paths. Only set this if you don't set `DRAWIO_SERVER_URL`; the entrypoint will derive `DRAWIO_SERVER_URL` from it (by adding a trailing slash). If both are set, both are used as given.
 * `DRAWIO_CSP_HEADER`: (Optional) Your website Content-Security-Policy if you want to customize it.
 * `DRAWIO_VIEWER_URL`: (Optional) If you want to host a draw.io viewer also, set the viewer URL. For example, `https://drawio.example.com/js/viewer.min.js`
 * `DRAWIO_LIGHTBOX_URL`: (Optional) If you want to host a draw.io viewer also, set the lightbox URL. For example, `https://drawio.example.com` 
@@ -51,6 +51,6 @@ When `DRAWIO_GITLAB_URL` points at anything other than `https://gitlab.com` (i.e
 # AWS Deployment
 
 You can deploy this docker compose easily to AWS ECS. Follow the instructions in this [tutorial](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-cli-tutorial-ec2.html) to install Amazonn ECS CLI, create a cluster, and deploy "self-contained" docker compose file to it. We recommend EC2 deployment.
-You will need to chnage port mapping to 80 and 443 to support standard HTTP and HTTPS ports in `docker-compose.yml`. Don't forget to allow access to these ports in the security group inbound rules. Also, it is required to set `DRAWIO_BASE_URL` environment variable in order to have a fully functional deployment. Set the other environment variables as described above to enable other services and features as needed.
+You will need to change the port mapping to 80 and 443 in `docker-compose.yml` to support standard HTTP and HTTPS ports. Don't forget to allow access to these ports in the security group inbound rules. You must also set `DRAWIO_SERVER_URL` to your public deployment URL in order to have a fully functional deployment. Set the other environment variables as described above to enable other services and features as needed.
 
 Refer to the main [README](https://github.com/jgraph/docker-drawio) file for how to configure **Let's Encrypt**.

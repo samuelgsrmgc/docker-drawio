@@ -32,28 +32,33 @@ if [[ "${DRAWIO_SELF_CONTAINED}" ]]; then
 elif [[ "${EXPORT_URL}" ]]; then
     echo "window.EXPORT_URL = '/service/0';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 fi
-#DRAWIO_SERVER_URL is the new URL of the deployment, e.g. https://www.example.com/drawio/
-#DRAWIO_BASE_URL is still used by viewer, lightbox and embed. For backwards compatibility, DRAWIO_SERVER_URL is set to DRAWIO_BASE_URL if not specified.
-# Strip trailing slash from DRAWIO_SERVER_URL to get base URL
+#DRAWIO_SERVER_URL is the deployment URL with a trailing slash, e.g. https://www.example.com/drawio/
+#DRAWIO_BASE_URL is the same URL without the trailing slash, used by the viewer/lightbox/embed code paths.
+#Either may be set on its own; the other is derived from it. If both are set, both are used as given.
 if [[ -n "$DRAWIO_SERVER_URL" ]]; then
-  DRAWIO_BASE_URL_VALUE="${DRAWIO_SERVER_URL%/}"
+  DRAWIO_SERVER_URL_VALUE="${DRAWIO_SERVER_URL}"
+  DRAWIO_BASE_URL_VALUE="${DRAWIO_BASE_URL:-${DRAWIO_SERVER_URL%/}}"
+elif [[ -n "$DRAWIO_BASE_URL" ]]; then
+  DRAWIO_SERVER_URL_VALUE="${DRAWIO_BASE_URL%/}/"
+  DRAWIO_BASE_URL_VALUE="${DRAWIO_BASE_URL}"
 else
+  DRAWIO_SERVER_URL_VALUE=""
   DRAWIO_BASE_URL_VALUE="http://localhost:8080"
 fi
 
 # Write it to PreConfig.js
-echo "window.DRAWIO_SERVER_URL = '${DRAWIO_SERVER_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+echo "window.DRAWIO_SERVER_URL = '${DRAWIO_SERVER_URL_VALUE}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "window.DRAWIO_BASE_URL = '${DRAWIO_BASE_URL_VALUE}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 
-# Dynamically update Tomcat context path if DRAWIO_SERVER_URL ends in a subpath
-URL_PATH=$(echo "${DRAWIO_SERVER_URL}" | sed -E 's|^https?://[^/]+||; s|[?#].*$||; s|/$||')
+# Dynamically update Tomcat context path if the deployment URL ends in a subpath
+URL_PATH=$(echo "${DRAWIO_SERVER_URL_VALUE}" | sed -E 's|^https?://[^/]+||; s|[?#].*$||; s|/$||')
 if [ -z "$URL_PATH" ]; then
   CONTEXT_PATH=""
 else
   CONTEXT_PATH="/$(basename "$URL_PATH")"
 fi
 
-if [ -n "$DRAWIO_SERVER_URL" ] && [ -n "$CONTEXT_PATH" ]; then
+if [ -n "$DRAWIO_SERVER_URL_VALUE" ] && [ -n "$CONTEXT_PATH" ]; then
   echo "Updating Tomcat context path to '${CONTEXT_PATH}'"
   xmlstarlet ed -P -S -L \
     -u '/Server/Service/Engine/Host/Context/@path' -v "${CONTEXT_PATH}" \
