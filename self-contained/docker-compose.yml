@@ -23,7 +23,6 @@ services:
       - drawionet
     environment:
       - DRAWIO_SELF_CONTAINED=1
-      - PLANTUML_URL=http://plantuml-server:8080/
       - EXPORT_URL=http://image-export:8000/
       - DRAWIO_BASE_URL=${DRAWIO_BASE_URL}
       - DRAWIO_SERVER_URL=${DRAWIO_SERVER_URL}
@@ -43,7 +42,6 @@ services:
       - DRAWIO_GITLAB_ID=${DRAWIO_GITLAB_ID}
       - DRAWIO_GITLAB_SECRET=${DRAWIO_GITLAB_SECRET}
       - DRAWIO_GITLAB_URL=${DRAWIO_GITLAB_URL}
-      - DRAWIO_CLOUD_CONVERT_APIKEY=${DRAWIO_CLOUD_CONVERT_APIKEY}
 networks:
   drawionet:
 

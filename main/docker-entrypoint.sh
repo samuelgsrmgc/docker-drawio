@@ -29,7 +29,6 @@ echo "})();" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #Overrides of global vars need to be pre-loaded
 if [[ "${DRAWIO_SELF_CONTAINED}" ]]; then
     echo "window.EXPORT_URL = '/service/0'; //This points to ExportProxyServlet which uses the local export server at port 8000. This proxy configuration allows https requests to the export server via Tomcat." >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-    echo "window.PLANT_URL = '/service/1';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 elif [[ "${EXPORT_URL}" ]]; then
     echo "window.EXPORT_URL = '/service/0';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 fi
@@ -131,10 +130,6 @@ echo "Init PostConfig.js"
 #null'ing of global vars need to be after init.js
 echo "window.ICONSEARCH_PATH = null;" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 echo "EditorUi.enableLogging = false; //Disable logging" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
-
-if [[ "${DRAWIO_SELF_CONTAINED}" ]]; then
-    echo "EditorUi.enablePlantUml = true; //Enables PlantUML" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
-fi
 
 #Allow self-hosted GitLab URLs. GitLabClient.authenticate() refuses any non-default
 #DRAWIO_GITLAB_URL unless Editor.enableCustomGitLabUrl is true, failing silently with

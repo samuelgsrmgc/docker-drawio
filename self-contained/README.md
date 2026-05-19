@@ -1,4 +1,4 @@
-This docker compose file runs draw.io diagram editor without depending on any draw.io online services (e.g., export service, plantUml, ...) and with support of Google Drive, Microsoft OneDrive, ...
+This docker compose file runs draw.io diagram editor without depending on any draw.io online services (e.g., the export service) and with support of Google Drive, Microsoft OneDrive, and GitLab.
 
 ### Adding fonts to improve generated PDFs and images
 
@@ -47,12 +47,6 @@ Create a new OAuth app (Settings -> Applications). Set "Redirect URI" (e.g, `htt
 * `DRAWIO_GITLAB_URL`: Your Gitlab base URL **without** any path, for example `https://gitlab.com` for SaaS or `https://gitlab.example.com` for self-hosted. The entrypoint appends `/oauth/token` itself when writing the server-side auth config, and the client uses this value as the base of the `/oauth/authorize` URL — adding a path here will produce broken URLs like `…/oauth/token/oauth/authorize`.
 
 When `DRAWIO_GITLAB_URL` points at anything other than `https://gitlab.com` (i.e., any self-hosted GitLab), the entrypoint automatically appends `Editor.enableCustomGitLabUrl = true;` to `PostConfig.js`. Without that flag, `GitLabClient.authenticate()` short-circuits with an "access denied" error and shows a warning dialog before any OAuth request is made, so the OAuth flow looks broken even though the credentials are correct.
-
-## EMF Converter
-
-This service is currently used by VSDX importer for converting EMF files in VSDX files. If you don't plan to use VSDX importer or your VSDX files don't contain EMF files, then this service is not important to you.
-
-This service is based on [Cloud Convert](http://cloudconvert.com). You will need to register for an account and set the environment variable `DRAWIO_CLOUD_CONVERT_APIKEY` to the API KEY. We use API **V1** API KEY.
 
 # AWS Deployment
 
