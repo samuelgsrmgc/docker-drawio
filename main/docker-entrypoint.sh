@@ -132,16 +132,16 @@ echo "Init PostConfig.js"
 echo "window.ICONSEARCH_PATH = null;" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 echo "EditorUi.enableLogging = false; //Disable logging" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 
-#This requires subscription with cloudconvert.com
-if [[ -z "${DRAWIO_CLOUD_CONVERT_APIKEY}" ]]; then
-    echo "window.EMF_CONVERT_URL = null;"  >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
-else
-    echo "window.EMF_CONVERT_URL = '/convert';" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
-    echo -n "${DRAWIO_CLOUD_CONVERT_APIKEY}" > $CATALINA_HOME/webapps/draw/WEB-INF/cloud_convert_api_key
-fi
-
 if [[ "${DRAWIO_SELF_CONTAINED}" ]]; then
     echo "EditorUi.enablePlantUml = true; //Enables PlantUML" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
+fi
+
+#Allow self-hosted GitLab URLs. GitLabClient.authenticate() refuses any non-default
+#DRAWIO_GITLAB_URL unless Editor.enableCustomGitLabUrl is true, failing silently with
+#an access-denied error. The check uses exact string equality against https://gitlab.com,
+#so strip a trailing slash before comparing.
+if [[ -n "${DRAWIO_GITLAB_URL}" && "${DRAWIO_GITLAB_URL%/}" != "https://gitlab.com" ]]; then
+    echo "Editor.enableCustomGitLabUrl = true; //Allow self-hosted GitLab" >> $CATALINA_HOME/webapps/draw/js/PostConfig.js
 fi
 
 #Treat this domain as a draw.io domain

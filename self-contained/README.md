@@ -44,7 +44,9 @@ Create a new OAuth app (Settings -> Applications). Set "Redirect URI" (e.g, `htt
 
 * `DRAWIO_GITLAB_ID`: Your Gitlab ID
 * `DRAWIO_GITLAB_SECRET`: Your Gitlab Secret
-* `DRAWIO_GITLAB_URL`: Your Gitlab URL, for example, `https://gitlab.com/oauth/token` when the gitlab.com is used
+* `DRAWIO_GITLAB_URL`: Your Gitlab base URL **without** any path, for example `https://gitlab.com` for SaaS or `https://gitlab.example.com` for self-hosted. The entrypoint appends `/oauth/token` itself when writing the server-side auth config, and the client uses this value as the base of the `/oauth/authorize` URL — adding a path here will produce broken URLs like `…/oauth/token/oauth/authorize`.
+
+When `DRAWIO_GITLAB_URL` points at anything other than `https://gitlab.com` (i.e., any self-hosted GitLab), the entrypoint automatically appends `Editor.enableCustomGitLabUrl = true;` to `PostConfig.js`. Without that flag, `GitLabClient.authenticate()` short-circuits with an "access denied" error and shows a warning dialog before any OAuth request is made, so the OAuth flow looks broken even though the credentials are correct.
 
 ## EMF Converter
 
