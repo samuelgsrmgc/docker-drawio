@@ -43,6 +43,10 @@ If you're running `Docker Toolbox` then start a web browser session to <http://1
 
 ## Environment variables
 
+All container behaviour is controlled by environment variables, processed by [`main/docker-entrypoint.sh`](main/docker-entrypoint.sh) at startup and written into `PreConfig.js` / `PostConfig.js` inside the deployed webapp.
+
+### Certificate and SSL
+
 * **LETS_ENCRYPT_ENABLED**: Enables Let's Encrypt certificate instead of self-signed; default `false`
 * **PUBLIC_DNS**: DNS domain to be used as certificate "CN" record; default `draw.example.com`
 * **ORGANISATION_UNIT**: Organisation unit to be used as certificate "OU" record; default `Cloud Native Application`
@@ -50,9 +54,51 @@ If you're running `Docker Toolbox` then start a web browser session to <http://1
 * **CITY**: City name to be used as certificate "L" record; default `Paris`
 * **STATE**: State name to be used as certificate "ST" record; default `Paris`
 * **COUNTRY_CODE**: Country code to be used as certificate "C" record; default `FR`
-* **KEYSTORE_PASS**: ".keystore"/.jks" store password; default `V3ry1nS3cur3P4ssw0rd`
+* **KEYSTORE_PASS**: ".keystore"/".jks" store password; default `V3ry1nS3cur3P4ssw0rd`
 * **KEY_PASS**: Private key password; default `<ref:KEYSTORE_PASS>`
-* **ENABLE_DRAWIO_PROXY**: Set to `1` to enable the `/proxy` endpoint (ProxyServlet) which allows embedding images from external URLs; default disabled
+
+### Deployment URL
+
+* **DRAWIO_SERVER_URL**: Public deployment URL **with a trailing slash**, e.g. `https://drawio.example.com/`, or `https://www.example.com/drawio/` if deployed into a sub-path. When a sub-path is present the entrypoint also updates the Tomcat context path automatically. Default unset (the webapp is served at `/`).
+* **DRAWIO_BASE_URL**: (Optional, backwards-compat) Same URL **without** a trailing slash, used by the viewer/lightbox/embed code paths. Only needed if `DRAWIO_SERVER_URL` is not set; the entrypoint derives whichever one is missing. If both are set, both pass through unchanged.
+* **DRAWIO_VIEWER_URL**: Optional URL of a hosted viewer JS bundle, e.g. `https://drawio.example.com/js/viewer.min.js`.
+* **DRAWIO_LIGHTBOX_URL**: Optional lightbox URL, e.g. `https://drawio.example.com`.
+
+### Editor configuration
+
+* **DRAWIO_CONFIG**: JSON configuration object for the diagram editor — written verbatim into `window.DRAWIO_CONFIG`. See <https://www.drawio.com/doc/faq/configure-diagram-editor>. Must be valid JSON, not arbitrary JavaScript.
+* **DRAWIO_CSP_HEADER**: Override the default Content-Security-Policy `<meta>` injected into the page. Defaults to a hard-coded policy in [`docker-entrypoint.sh`](main/docker-entrypoint.sh) — start from that policy when customising.
+* **ENABLE_DRAWIO_PROXY**: Set to `1` to enable the `/proxy` endpoint (ProxyServlet) which allows embedding images from external URLs; default disabled.
+
+### Export server integration
+
+* **DRAWIO_SELF_CONTAINED**: Set to `1` to route export requests through Tomcat's `ExportProxyServlet` (`/service/0`) instead of calling the export server directly. Use this when the export server is only reachable inside the docker network.
+* **EXPORT_URL**: Without `DRAWIO_SELF_CONTAINED`, set this to any value to make the webapp call `/service/0` for exports. With `DRAWIO_SELF_CONTAINED=1` the same routing is enabled automatically. The actual upstream URL is read by the proxy servlet from `web.xml`.
+
+### Google Drive integration
+
+See [`self-contained/README.md`](self-contained/README.md#google-drive) for how to register the OAuth app.
+
+* **DRAWIO_GOOGLE_CLIENT_ID**: OAuth client ID. Unset = Google Drive integration disabled.
+* **DRAWIO_GOOGLE_CLIENT_SECRET**: OAuth client secret.
+* **DRAWIO_GOOGLE_APP_ID**: Google project number (the numeric prefix of the client ID, before the first `-`).
+* **DRAWIO_GOOGLE_VIEWER_CLIENT_ID** / **DRAWIO_GOOGLE_VIEWER_CLIENT_SECRET** / **DRAWIO_GOOGLE_VIEWER_APP_ID**: Optional separate read-only credentials for a viewer deployment.
+
+### Microsoft OneDrive integration
+
+See [`self-contained/README.md`](self-contained/README.md#microsoft-onedrive) for redirect-URI requirements.
+
+* **DRAWIO_MSGRAPH_CLIENT_ID**: Azure app client ID. Unset = OneDrive integration disabled.
+* **DRAWIO_MSGRAPH_CLIENT_SECRET**: Azure app client secret.
+* **DRAWIO_MSGRAPH_TENANT_ID**: Tenant ID for single-tenant Azure apps.
+
+### GitLab integration
+
+See [`self-contained/README.md`](self-contained/README.md#gitlab) for OAuth-app setup.
+
+* **DRAWIO_GITLAB_ID**: OAuth application ID. Unset = GitLab integration disabled.
+* **DRAWIO_GITLAB_SECRET**: OAuth application secret.
+* **DRAWIO_GITLAB_URL**: GitLab base URL **without** any path, e.g. `https://gitlab.com` or `https://gitlab.example.com`. The entrypoint appends `/oauth/token` itself for server-side auth, and uses this value as the base of the client-side `/oauth/authorize` URL — adding a path here breaks both. When this is set to anything other than `https://gitlab.com` the entrypoint also writes `Editor.enableCustomGitLabUrl = true;` into `PostConfig.js`, which is required by the client to allow self-hosted instances.
 
 ## HTTPS SSL Certificate via Let's Encrypt
 
@@ -72,7 +118,7 @@ Notice that mapping port 80 to container's port 80 allows certbot to work in sta
 
 ## Changing draw.io configuration
 
-Configuration is managed by `DRAWIO_*` environment variables. For a list of these variables, check the `docker-entrypoint.sh` file in the `main` directory. For example, these variables allow enabling integration with Google Drive, OneDrive, ...
+All draw.io configuration is driven by the `DRAWIO_*` environment variables listed in the [Environment variables](#environment-variables) section above. For integrations that need an OAuth app (Google Drive, Microsoft OneDrive, GitLab), the step-by-step app-registration instructions live in [`self-contained/README.md`](self-contained/README.md).
 
 ## Reference
 
