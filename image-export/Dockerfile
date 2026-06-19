@@ -27,7 +27,12 @@ RUN apt-get update \
     && cd /home/pptruser \
     && git clone https://github.com/jgraph/draw-image-export2.git \
     && chown -R pptruser:pptruser /home/pptruser \
-    && apt-get remove -y --purge git wget \
+    # Only purge git (a build-time clone tool). Do NOT purge wget: it is a
+    # runtime dependency of google-chrome-stable, so removing it uninstalls
+    # Chrome and leaves PUPPETEER_EXECUTABLE_PATH dangling -> HTTP 500 on render.
+    && apt-get remove -y --purge git \
+    # Fail the build early if the cleanup ever removes Chrome again.
+    && test -x /usr/bin/google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
 USER pptruser
