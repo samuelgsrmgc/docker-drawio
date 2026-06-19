@@ -35,5 +35,9 @@ jobs:
         test "${STATUS}" = "200"
         test "$(head -c 8 /tmp/export-test.png | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a"
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin;
+        # Publish an immutable, commit-pinned tag alongside the mutable
+        # :latest so consumers can pin to a known-good build (#24).
         docker tag ${REPO} ${REPO}:latest;
+        docker tag ${REPO} ${REPO}:${GITHUB_SHA};
         docker push ${REPO}:latest;
+        docker push ${REPO}:${GITHUB_SHA};
