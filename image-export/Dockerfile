@@ -2,13 +2,15 @@ FROM node:lts-slim
 
 LABEL maintainer="JGraph Ltd"
 
-# We don't need the standalone Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
+# We don't download Puppeteer's bundled Chromium; point Puppeteer at the
+# system google-chrome-stable installed below instead.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
 # From https://github.com/puppeteer/puppeteer/blob/main/docker/Dockerfile
-# Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
-# Note: this installs the necessary libs to make the bundled version of Chrome that Puppeteer
-# installs, work.
+# Install google-chrome-stable and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others).
+# Note: PUPPETEER_EXECUTABLE_PATH above makes Puppeteer use this system Chrome
+# rather than looking for a bundled copy it never downloaded.
 RUN apt-get update \
     && apt-get install -y wget gnupg git curl \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
