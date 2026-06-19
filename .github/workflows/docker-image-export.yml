@@ -22,6 +22,18 @@ jobs:
         sleep 12
         docker logs image-export
         docker exec image-export /bin/bash -c "curl -i http://localhost:8000"
+        # Render an actual diagram: a plain liveness check on / never launches
+        # the browser, so it cannot catch a missing/broken Chrome. Assert a
+        # real PNG comes back.
+        STATUS=$(curl -sS -o /tmp/export-test.png -w '%{http_code}' \
+          -X POST "http://localhost:${HTTP_PORT}/" \
+          --data-urlencode 'format=png' \
+          --data-urlencode 'crop=1' \
+          --data-urlencode 'scale=1' \
+          --data-urlencode 'xml=<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="CI render test" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="160" height="60" as="geometry"/></mxCell></root></mxGraphModel>')
+        echo "Render HTTP ${STATUS}, $(wc -c < /tmp/export-test.png) bytes"
+        test "${STATUS}" = "200"
+        test "$(head -c 8 /tmp/export-test.png | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a"
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin;
         docker tag ${REPO} ${REPO}:latest;
         docker push ${REPO}:latest;
