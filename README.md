@@ -70,6 +70,14 @@ All container behaviour is controlled by environment variables, processed by [`m
 * **DRAWIO_CSP_HEADER**: Override the default Content-Security-Policy `<meta>` injected into the page. Defaults to a hard-coded policy in [`docker-entrypoint.sh`](main/docker-entrypoint.sh) — start from that policy when customising.
 * **ENABLE_DRAWIO_PROXY**: Set to `1` to enable the `/proxy` endpoint (ProxyServlet) which allows embedding images from external URLs; default disabled.
 
+**Enabling AI diagram generation:** the AI options (`enableAi`, `gptApiKey`, `geminiApiKey`, `claudeApiKey`, `aiModels`, `aiConfigs`, ...) are editor configuration settings, not standalone environment variables — there is no `DRAWIO_ENABLE_AI`. Set them inside `DRAWIO_CONFIG`, for example:
+
+```bash
+DRAWIO_CONFIG={"enableAi":true,"claudeApiKey":"sk-ant-...","aiModels":[{"name":"Claude 4.5 Sonnet","model":"claude-sonnet-4-5","config":"claude"}]}
+```
+
+`enableAi` defaults to `true` only on app.diagrams.net, and the custom AI actions only appear once an API key and model are configured, so a self-hosted deployment needs both `enableAi: true` **and** a key. See [Customise LLM backends for diagram generation](https://www.drawio.com/doc/faq/configure-ai-options) for the full list of options.
+
 ### Export server integration
 
 * **DRAWIO_SELF_CONTAINED**: Set to `1` to route export requests through Tomcat's `ExportProxyServlet` (`/service/0`) instead of calling the export server directly. Use this when the export server is only reachable inside the docker network.
