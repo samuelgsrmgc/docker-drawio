@@ -11,6 +11,7 @@ jobs:
     env:
       REPO: jgraph/export-server
       HTTP_PORT: 32733
+      NONROOT_HTTP_PORT: 32734
       DOCKER_USER: ${{ secrets.DOCKER_USER }}
       DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
     steps:
@@ -42,6 +43,23 @@ jobs:
         head -c 500 /tmp/export-test.png; echo
         test "${STATUS}" = "200"
         test "$(head -c 8 /tmp/export-test.png | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a"
+        # Repeat the render under an arbitrary UID with GID 0 (OpenShift-style).
+        # Rendering (not just liveness) is what exercises the two non-root
+        # requirements: HOME resolvable for the Chrome launcher, and a writable
+        # app dir for the Chrome profile. [jgraph/docker-drawio#186]
+        docker run --name "image-export-nonroot" -d --user 12345:0 -p ${NONROOT_HTTP_PORT}:8000 ${REPO}
+        sleep 12
+        STATUS=$(curl -sS -o /tmp/export-test-nonroot.png -w '%{http_code}' \
+          -X POST "http://localhost:${NONROOT_HTTP_PORT}/" \
+          --data-urlencode 'format=png' \
+          --data-urlencode 'crop=1' \
+          --data-urlencode 'scale=1' \
+          --data-urlencode 'xml=<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="CI render test" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="160" height="60" as="geometry"/></mxCell></root></mxGraphModel>')
+        echo "Non-root render HTTP ${STATUS}, $(wc -c < /tmp/export-test-nonroot.png) bytes"
+        echo "=== export-server non-root logs (post-render) ==="
+        docker logs image-export-nonroot
+        test "${STATUS}" = "200"
+        test "$(head -c 8 /tmp/export-test-nonroot.png | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a"
         echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin;
         # Publish an immutable, commit-pinned tag alongside the mutable
         # :latest so consumers can pin to a known-good build (#24).

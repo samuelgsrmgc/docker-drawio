@@ -11,6 +11,20 @@ COUNTRY_CODE=${COUNTRY_CODE:-'FR'}
 KEYSTORE_PASS=${KEYSTORE_PASS:-'V3ry1nS3cur3P4ssw0rd'}
 KEY_PASS=${KEY_PASS:-$KEYSTORE_PASS}
 
+#Every step below writes into CATALINA_HOME. When the container runs as a
+#UID without write access (a user:/runAsUser override lacking GID 0), each
+#write would fail with its own cryptic error, so give one clear warning and
+#start Tomcat with the configuration baked in at build time instead.
+#[jgraph/docker-drawio#186]
+if ! touch $CATALINA_HOME/webapps/draw/js/PreConfig.js 2>/dev/null; then
+    echo "WARNING: No write access to $CATALINA_HOME (running as UID $(id -u), GID $(id -g))."
+    echo "         Skipping runtime configuration: DRAWIO_* environment variables, SSL and the"
+    echo "         context path will NOT be applied. To run as an arbitrary user, give it GID 0,"
+    echo "         e.g. 'docker run --user 1234:0', compose 'group_add: [\"0\"]' or kubernetes"
+    echo "         'runAsGroup: 0' / 'supplementalGroups: [0]'. See README: Running as non-root."
+    exec "$@"
+fi
+
 echo "Init PreConfig.js"
 #Add CSP to prevent calls to draw.io
 echo "(function() {" > $CATALINA_HOME/webapps/draw/js/PreConfig.js

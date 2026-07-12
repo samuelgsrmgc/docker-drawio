@@ -41,6 +41,42 @@ If you're running `Docker Toolbox` then start a web browser session to <http://1
 
 > `?offline=1` is a security feature that disables support of cloud storage.
 
+## Running as a non-root user
+
+Both images already run as a dedicated non-root user by default — `tomcat` (UID `1001`, GID `999`) in `jgraph/drawio` and `pptruser` (UID `999`) in `jgraph/export-server` — so nothing needs to be configured just to avoid root.
+
+To run under a *different* UID (a compose `user:` override, Kubernetes `runAsUser`, or OpenShift's arbitrary UIDs), the user must carry the **root group (GID `0`)**. Configuration is applied at startup by rewriting files inside the container ([`main/docker-entrypoint.sh`](main/docker-entrypoint.sh)), and both images grant GID `0` owner-equivalent permissions on those paths, following the OpenShift image guidelines. Membership of group `0` grants no other privileges — it is not root.
+
+```bash
+docker run -it --rm -p 8080:8080 --user 1234:0 jgraph/drawio
+```
+
+docker-compose — either set group `0` directly or keep your own GID and add it as a supplementary group:
+
+```yaml
+services:
+  drawio:
+    image: jgraph/drawio
+    user: "1234:1234"
+    group_add:
+      - "0"
+```
+
+Kubernetes:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1234
+  runAsGroup: 0        # or keep your own runAsGroup and add supplementalGroups: [0]
+```
+
+On OpenShift, restricted SCCs already run pods with an arbitrary UID and GID `0`, so both images work there without any extra configuration.
+
+Without GID `0` the main container still starts, but the entrypoint logs a warning and skips all runtime configuration (`DRAWIO_*` variables, SSL, context path), and the export server fails to render because Chrome cannot write its profile directory.
+
+> `readOnlyRootFilesystem: true` is not currently supported, since configuration is written into the webapp at startup.
+
 ## Environment variables
 
 All container behaviour is controlled by environment variables, processed by [`main/docker-entrypoint.sh`](main/docker-entrypoint.sh) at startup and written into `PreConfig.js` / `PostConfig.js` inside the deployed webapp.

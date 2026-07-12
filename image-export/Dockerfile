@@ -26,7 +26,13 @@ RUN apt-get update \
     && groupadd -r pptruser && useradd -rm -g pptruser -G audio,video pptruser \
     && cd /home/pptruser \
     && git clone https://github.com/jgraph/draw-image-export2.git \
-    && chown -R pptruser:pptruser /home/pptruser \
+    # Root group (GID 0) gets owner-equivalent permissions so the server can
+    # run under an arbitrary UID carrying GID 0 (OpenShift default; --user
+    # <uid>:0 / group_add / supplementalGroups elsewhere). Chrome creates its
+    # profile dir (userDataDir) inside the app directory at render time, so
+    # read access alone is not enough. [jgraph/docker-drawio#186]
+    && chown -R pptruser:0 /home/pptruser \
+    && chmod -R g=u /home/pptruser \
     # Only purge git (a build-time clone tool). Do NOT purge wget: it is a
     # runtime dependency of google-chrome-stable, so removing it uninstalls
     # Chrome and leaves PUPPETEER_EXECUTABLE_PATH dangling -> HTTP 500 on render.
@@ -42,6 +48,13 @@ ENV DBUS_SESSION_BUS_ADDRESS autolaunch:
 WORKDIR /home/pptruser/draw-image-export2
 
 RUN npm install
+
+# Chrome resolves paths under $HOME at launch; an arbitrary runtime UID has no
+# passwd entry, so HOME falls back to '/', which is not writable, and the
+# browser launch aborts. /tmp is writable for every UID. Set after 'npm install'
+# so the build-time npm cache is not baked into the image at /tmp.
+# [jgraph/docker-drawio#186]
+ENV HOME=/tmp
 
 EXPOSE 8000
 

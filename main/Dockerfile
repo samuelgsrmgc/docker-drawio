@@ -51,9 +51,17 @@ RUN mkdir -p $CATALINA_HOME/webapps/draw && \
 # Copy docker-entrypoint
 COPY docker-entrypoint.sh /
 RUN chmod 755 /docker-entrypoint.sh
-# Add a tomcat user
-RUN groupadd -r ${RUN_GROUP} && useradd -g ${RUN_GROUP} -d ${CATALINA_HOME} -s /bin/bash ${RUN_USER} && \
-    chown -R ${RUN_USER}:${RUN_GROUP} ${CATALINA_HOME}
+# Add a tomcat user, pinned to the UID/GID earlier releases were assigned
+# implicitly so volumes chowned against published images keep working.
+# The root group (GID 0) gets owner-equivalent permissions on CATALINA_HOME
+# (OpenShift image convention) so the container can also run under an
+# arbitrary UID as long as it carries GID 0: OpenShift does this by default,
+# docker/k8s users opt in via --user <uid>:0, group_add or supplementalGroups.
+# docker-entrypoint.sh rewrites config files at startup, so read access alone
+# is not enough. [jgraph/docker-drawio#186]
+RUN groupadd -r -g 999 ${RUN_GROUP} && useradd -u 1001 -g ${RUN_GROUP} -d ${CATALINA_HOME} -s /bin/bash ${RUN_USER} && \
+    chown -R ${RUN_USER}:0 ${CATALINA_HOME} && \
+    chmod -R g=u ${CATALINA_HOME}
 
 USER ${RUN_USER}
 

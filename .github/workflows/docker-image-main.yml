@@ -36,3 +36,17 @@ jobs:
         sleep 10
         docker logs drawio
         docker exec drawio /bin/bash -c "curl -i http://localhost:8080"
+        # The image must also work under an arbitrary UID with GID 0
+        # (OpenShift-style). On a permission failure the entrypoint warns and
+        # skips configuration without any "permission denied" noise, so also
+        # assert positively that the runtime-written config marker is present.
+        # [jgraph/docker-drawio#186]
+        docker run --name "drawio-nonroot" -d --user 12345:0 ${REPO}:${VERSION}
+        sleep 10
+        docker logs drawio-nonroot
+        if docker logs drawio-nonroot 2>&1 | grep -iE "permission denied|skipping runtime configuration"; then
+          echo "Runtime configuration failed under --user 12345:0"
+          exit 1
+        fi
+        docker exec drawio-nonroot grep -q "window.DRAWIO_SERVER_URL" /usr/local/tomcat/webapps/draw/js/PreConfig.js
+        docker exec drawio-nonroot /bin/bash -c "curl -sf -o /dev/null http://localhost:8080"
