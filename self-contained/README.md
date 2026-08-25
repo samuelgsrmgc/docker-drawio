@@ -4,6 +4,8 @@ This docker compose file runs draw.io diagram editor without depending on any dr
 
 The docker-compose file bind the `fonts` volume into the running container system fonts.
 
+These fonts are used by the export server (the `image-export` service, where the volume is mounted) for server-side rendering of exported PDFs/images only — they do not appear in the editor's font list. To make fonts selectable in the editor, see [Custom fonts](../README.md#custom-fonts) in the main README.
+
 The best option for Windows users is to copy the contents of `Windowsdrive:/Windows/Fonts` into `fonts` folder. These fonts are copyrighted and cannot be re-distributed freely.
 
 # Configuration

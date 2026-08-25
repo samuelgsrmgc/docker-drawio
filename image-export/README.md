@@ -4,4 +4,6 @@ This docker image is standalone image-export-server of draw.io. It is used by dr
 
 The docker-compose file bind the `fonts` folder into the running container system fonts. Add your fonts to that folder in order to get matching results of the exported diagrams.
 
+These fonts are used for server-side rendering of exported images/PDFs only — they do not appear in the draw.io editor's font list. To make fonts selectable in the editor, see [Custom fonts](../README.md#custom-fonts) in the main README.
+
 The best option for Windows users is to copy the contents of `Windowsdrive:/Windows/Fonts` into `fonts` folder. These fonts are copyrighted and cannot be re-distributed freely.

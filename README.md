@@ -118,6 +118,24 @@ DRAWIO_CONFIG={"enableAi":true,"claudeApiKey":"sk-ant-...","aiModels":[{"name":"
 
 `enableAi` defaults to `true` only on app.diagrams.net, and the custom AI actions only appear once an API key and model are configured, so a self-hosted deployment needs both `enableAi: true` **and** a key. See [Customise LLM backends for diagram generation](https://www.drawio.com/doc/faq/configure-ai-options) for the full list of options.
 
+### Custom fonts
+
+Fonts are needed in two different places, configured independently — mounting font files into this container does **not** make them appear in the editor:
+
+* **Editor fonts (browser)**: the editor renders text in the user's browser, which can only use fonts installed on the viewer's device or loaded over HTTP(S). Make a web font selectable in the font picker with `defaultFonts` (or `customFonts`, which prepends to the list) inside `DRAWIO_CONFIG`:
+
+  ```bash
+  DRAWIO_CONFIG={"defaultFonts":["Helvetica",{"fontFamily":"My Font","fontUrl":"https://drawio.example.com/fonts/MyFont.woff2"}]}
+  ```
+
+  Plain string entries must be installed on every viewer's device; entries with `fontFamily` + `fontUrl` (a direct font file or a Google-Fonts-style CSS URL) are downloaded by the browser, and the URL is stored in the diagram so other viewers and exports can resolve it — use an absolute URL reachable from every browser that will open the diagram. To serve font files from this container, mount them into the webapp: `-v ./fonts:/usr/local/tomcat/webapps/draw/fonts` serves them at `https://your-host/fonts/…`.
+
+  `fontCss` (also inside `DRAWIO_CONFIG`) injects raw `@font-face` rules; it makes text using that family render, but does **not** add anything to the font picker — combine it with a plain font name in `defaultFonts`/`customFonts`, or just use a `fontUrl` entry instead. The default CSP allows fonts from any origin (`font-src *`); if you override **DRAWIO_CSP_HEADER**, keep your font host allowed there.
+
+* **Export fonts (server-side rendering)**: PDF/image export renders with the fonts installed inside the *export-server* container, not this one. Mount extra fonts at `/usr/share/fonts/drawio` on the `jgraph/export-server` container — see [`image-export/README.md`](image-export/README.md) and [`self-contained/README.md`](self-contained/README.md). This affects exported files only; it does not add fonts to the editor.
+
+See the draw.io documentation on [external fonts](https://www.drawio.com/docs/manual/text/external-fonts/) for how fonts behave in the editor itself.
+
 ### Export server integration
 
 * **DRAWIO_SELF_CONTAINED**: Set to `1` to route export requests through Tomcat's `ExportProxyServlet` (`/service/0`) instead of calling the export server directly. Use this when the export server is only reachable inside the docker network.
