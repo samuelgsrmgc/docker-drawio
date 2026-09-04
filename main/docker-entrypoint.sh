@@ -87,7 +87,80 @@ echo "window.DRAWIO_VIEWER_URL = '${DRAWIO_VIEWER_URL}';" >> $CATALINA_HOME/weba
 echo "window.DRAWIO_LIGHTBOX_URL = '${DRAWIO_LIGHTBOX_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "window.DRAW_MATH_URL = 'math4/es5';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #Custom draw.io configurations. For more details, https://www.drawio.com/doc/faq/configure-diagram-editor
-echo "window.DRAWIO_CONFIG = ${DRAWIO_CONFIG:-null};" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+#DRAWIO_CONFIG_FILE names a JSON file inside the container (bind mount, ConfigMap) and takes
+#precedence over the inline DRAWIO_CONFIG value. The value is written verbatim into PreConfig.js,
+#so anything that is not a JavaScript object literal (a file path, a quoted string) breaks the
+#whole script, and with it every DRAWIO_* setting, without any error at startup. The checks
+#below catch the common mistakes and log them. [jgraph/docker-drawio#155]
+DRAWIO_CONFIG_VALUE="${DRAWIO_CONFIG}"
+if [[ -n "${DRAWIO_CONFIG_FILE}" ]]; then
+    if [[ -r "${DRAWIO_CONFIG_FILE}" ]]; then
+        if [[ -n "${DRAWIO_CONFIG_VALUE}" ]]; then
+            echo "NOTICE: Both DRAWIO_CONFIG_FILE and DRAWIO_CONFIG are set, using DRAWIO_CONFIG_FILE."
+        fi
+        DRAWIO_CONFIG_VALUE="$(cat "${DRAWIO_CONFIG_FILE}")"
+    else
+        echo "WARNING: DRAWIO_CONFIG_FILE '${DRAWIO_CONFIG_FILE}' does not exist or is not readable, ignoring it."
+    fi
+fi
+#Trim surrounding whitespace so the checks see the first real character
+DRAWIO_CONFIG_VALUE="${DRAWIO_CONFIG_VALUE#"${DRAWIO_CONFIG_VALUE%%[![:space:]]*}"}"
+DRAWIO_CONFIG_VALUE="${DRAWIO_CONFIG_VALUE%"${DRAWIO_CONFIG_VALUE##*[![:space:]]}"}"
+case "${DRAWIO_CONFIG_VALUE}" in
+    ''|null)
+        DRAWIO_CONFIG_VALUE="null"
+        ;;
+    \{*)
+        ;;
+    \'*\')
+        #docker compose keeps the quotes in the list syntax (- DRAWIO_CONFIG='{...}'), which turns
+        #the value into a JavaScript string that the editor silently ignores. A JSON object never
+        #starts with a quote, so stripping a matching pair cannot break a valid value.
+        echo "NOTICE: Stripping the single quotes around DRAWIO_CONFIG. In docker compose use the map syntax (DRAWIO_CONFIG: '{...}') so the quotes do not end up in the value."
+        DRAWIO_CONFIG_VALUE="${DRAWIO_CONFIG_VALUE:1:-1}"
+        ;;
+    *)
+        echo "WARNING: DRAWIO_CONFIG must be an inline JSON object such as {\"defaultFonts\":[\"Helvetica\"]}. To load it from a file, set DRAWIO_CONFIG_FILE to the file's path inside the container."
+        ;;
+esac
+#Only values that at least look like an object get the JSON check (the other cases warned above).
+#python3 is present as a certbot dependency; without it the check is skipped, not failed.
+if [[ "${DRAWIO_CONFIG_VALUE}" == \{* ]] && command -v python3 >/dev/null 2>&1; then
+    JSON_ERROR=$(printf '%s' "${DRAWIO_CONFIG_VALUE}" | python3 -c '
+import json, sys
+try:
+    json.load(sys.stdin)
+except ValueError as e:
+    print(e)
+    sys.exit(1)
+')
+    if [[ $? -ne 0 ]]; then
+        echo "WARNING: DRAWIO_CONFIG is not valid JSON (${JSON_ERROR}). If the browser cannot parse it, PreConfig.js fails to load and ALL DRAWIO_* settings are ignored."
+    fi
+fi
+printf 'window.DRAWIO_CONFIG = %s;\n' "${DRAWIO_CONFIG_VALUE}" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+#Default UI language. Init.js resolves the language as the lang URL parameter, then the choice the
+#user saved in the editor (.drawio-config in localStorage), then the browser language. Presetting
+#window.mxLanguage unconditionally would override the first two, so the default only applies when
+#neither is present. There is no language key in DRAWIO_CONFIG. [jgraph/docker-drawio#155]
+if [[ -n "${DRAWIO_LANG}" ]]; then
+    if [[ "${DRAWIO_LANG}" =~ ^[A-Za-z]{2,3}(-[A-Za-z]{2})?$ ]]; then
+        cat >> $CATALINA_HOME/webapps/draw/js/PreConfig.js <<EOF
+(function() {
+  try {
+    if (urlParams['lang'] == null) {
+      var saved = (window.isLocalStorage) ? localStorage.getItem('.drawio-config') : null;
+      if (saved == null || !JSON.parse(saved).language) {
+        window.mxLanguage = '${DRAWIO_LANG,,}'; //DRAWIO_LANG default
+      }
+    }
+  } catch (e) {} // ignore
+})();
+EOF
+    else
+        echo "WARNING: DRAWIO_LANG '${DRAWIO_LANG}' is not a language code such as 'es' or 'pt-br', ignoring it."
+    fi
+fi
 #Real-time configuration
 echo "urlParams['sync'] = 'manual'; //Disable Real-Time" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 

@@ -106,7 +106,14 @@ All container behaviour is controlled by environment variables, processed by [`m
 
 ### Editor configuration
 
-* **DRAWIO_CONFIG**: JSON configuration object for the diagram editor — written verbatim into `window.DRAWIO_CONFIG`. See <https://www.drawio.com/doc/faq/configure-diagram-editor>. Must be valid JSON, not arbitrary JavaScript.
+* **DRAWIO_CONFIG**: JSON configuration object for the diagram editor — written verbatim into `window.DRAWIO_CONFIG`. See <https://www.drawio.com/doc/faq/configure-diagram-editor>. Must be valid JSON, not arbitrary JavaScript, and must be the JSON itself, not the path of a file (see `DRAWIO_CONFIG_FILE`). The entrypoint logs a warning at startup when the value does not parse as JSON. In a compose file use the map syntax, `DRAWIO_CONFIG: '{"defaultFonts":["Helvetica"]}'` — with the list syntax (`- DRAWIO_CONFIG='{...}'`) the quotes become part of the value and the editor ignores it (the entrypoint strips a matching pair of single quotes and logs a notice).
+* **DRAWIO_CONFIG_FILE**: Path inside the container of a file holding that same JSON object, for a bind mount or a Kubernetes ConfigMap. Takes precedence over `DRAWIO_CONFIG` when both are set. For example:
+
+  ```bash
+  docker run -p 8080:8080 -v ./drawio-config.json:/config/drawio-config.json:ro -e DRAWIO_CONFIG_FILE=/config/drawio-config.json jgraph/drawio
+  ```
+
+* **DRAWIO_LANG**: Default language of the editor UI as a draw.io language code, e.g. `es`, `de` or `pt-br` (the codes behind the editor's *Language* menu). Used when the URL has no `lang` parameter and the user has not picked a language in the editor; both of those still win. Unset = browser language. There is no language key in `DRAWIO_CONFIG`.
 * **DRAWIO_CSP_HEADER**: Override the default Content-Security-Policy `<meta>` injected into the page. Defaults to a hard-coded policy in [`docker-entrypoint.sh`](main/docker-entrypoint.sh) — start from that policy when customising.
 * **ENABLE_DRAWIO_PROXY**: Set to `1` to enable the `/proxy` endpoint (ProxyServlet) which allows embedding images from external URLs; default disabled.
 
@@ -139,7 +146,7 @@ See the draw.io documentation on [external fonts](https://www.drawio.com/docs/ma
 ### Export server integration
 
 * **DRAWIO_SELF_CONTAINED**: Set to `1` to route export requests through Tomcat's `ExportProxyServlet` (`/service/0`) instead of calling the export server directly. Use this when the export server is only reachable inside the docker network.
-* **EXPORT_URL**: Without `DRAWIO_SELF_CONTAINED`, set this to any value to make the webapp call `/service/0` for exports. With `DRAWIO_SELF_CONTAINED=1` the same routing is enabled automatically. The actual upstream URL is read by the proxy servlet from `web.xml`.
+* **EXPORT_URL**: Full URL of the export server as reachable from this container, e.g. `http://image-export:8000/`. Setting it makes the webapp post exports to `/service/0`, where `ExportProxyServlet` forwards them to this URL — the servlet reads the variable directly; nothing is configured in `web.xml`. With `DRAWIO_SELF_CONTAINED=1` the `/service/0` routing is enabled automatically, but the servlet still needs `EXPORT_URL`.
 
 ### Google Drive integration
 
