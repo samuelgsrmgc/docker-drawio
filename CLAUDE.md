@@ -2,16 +2,19 @@
 
 ## Project overview
 
-Docker packaging for [draw.io](https://github.com/jgraph/drawio). Produces the `jgraph/drawio` and `jgraph/export-server` Docker images.
+Docker packaging for [draw.io](https://github.com/jgraph/drawio). Produces the `jgraph/drawio` Docker image.
+
+The separate export server image (`jgraph/export-server`, formerly `image-export/`) is end-of-life and has been removed. Do not reintroduce `EXPORT_URL` / `DRAWIO_SELF_CONTAINED` handling or references to it.
 
 ## Repository structure
 
-- `main/` — Primary draw.io Docker image (Tomcat + draw.io WAR built from source)
+- `main/` — The draw.io Docker image (Tomcat + draw.io WAR built from source)
   - `Dockerfile` — Multi-stage build: builds draw.io WAR with Ant, deploys to Tomcat 9
   - `docker-entrypoint.sh` — Runtime configuration via environment variables (PreConfig.js / PostConfig.js generation, SSL setup, Tomcat context path)
-- `image-export/` — Export server image (Node.js + Puppeteer + Chrome for PDF/image export)
-- `self-contained/` — docker-compose for running draw.io with export server and all integrations
+- `docker-compose.yml` — Runs the image with every `DRAWIO_*` variable passed through from the environment / a `.env` file (Google Drive, OneDrive and GitLab integrations)
 - `nextcloud/` — docker-compose for Nextcloud integration with nginx reverse proxy
+- `deploy/kubernetes/` — Kubernetes manifests
+- `.github/workflows/docker-image-main.yml` — Builds, tests and pushes the image on version tags and weekly
 
 ## Key conventions
 
@@ -23,17 +26,14 @@ Docker packaging for [draw.io](https://github.com/jgraph/drawio). Produces the `
 ## Building and testing
 
 ```bash
-# Build the main image
+# Build the image
 docker build -t jgraph/drawio main/
-
-# Build the export server image
-docker build -t jgraph/export-server image-export/
 
 # Run locally
 docker run -it --rm -p 8080:8080 jgraph/drawio
 
-# Run self-contained (with export server)
-cd self-contained && docker-compose up
+# Run with docker compose (configuration from a .env file)
+docker compose up
 ```
 
 ## Environment variable patterns
@@ -41,5 +41,6 @@ cd self-contained && docker-compose up
 New environment variables should:
 1. Be documented in `README.md` under "Environment variables"
 2. Be processed in `main/docker-entrypoint.sh`
-3. Follow the `DRAWIO_*` naming convention for draw.io-specific settings
-4. Use shell defaults: `${VAR:-default_value}`
+3. Be passed through in `docker-compose.yml`
+4. Follow the `DRAWIO_*` naming convention for draw.io-specific settings
+5. Use shell defaults: `${VAR:-default_value}`

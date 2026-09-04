@@ -1,5 +1,4 @@
 # Modified from https://blog.ssdnodes.com/blog/installing-nextcloud-docker/ to include draw.io
-version: '3' 
 
 services:
 
@@ -49,17 +48,6 @@ services:
       - MYSQL_USER=nextcloud
     restart: unless-stopped
 
-  image-export:
-    image: jgraph/export-server
-    container_name: nextcloud-drawio-export
-    expose:
-      - "8000"
-    networks:
-      - nextcloud_network
-    volumes:
-      - ./fonts:/usr/share/fonts/drawio 
-    restart: unless-stopped
-  
   drawio:
     image: jgraph/drawio
     container_name: nextcloud-drawio
@@ -68,13 +56,11 @@ services:
     depends_on:
       - letsencrypt
       - proxy
-      - image-export
     environment:
       - VIRTUAL_HOST=drawio.YOUR-DOMAIN
       - VIRTUAL_PORT=8080
       - LETSENCRYPT_HOST=drawio.YOUR-DOMAIN
       - LETSENCRYPT_EMAIL=YOUR-EMAIL
-      - EXPORT_URL=http://image-export:8000/
     restart: unless-stopped
 
   app:

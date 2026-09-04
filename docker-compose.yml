@@ -1,24 +1,45 @@
-#This compose file adds draw.io to your stack
-version: '3.5'
+# Runs draw.io from the jgraph/drawio image.
+#
+# Every DRAWIO_* variable is passed through from the environment, so the
+# easiest way to configure it is a .env file next to this compose file:
+#
+#   DRAWIO_SERVER_URL=https://drawio.example.com/
+#   DRAWIO_GITLAB_ID=...
+#
+# Variables you leave unset are passed through empty, which the image treats
+# as unset. See README.md for what each variable does. The SSL variables
+# (PUBLIC_DNS, LETS_ENCRYPT_ENABLED, ...) can be added the same way.
 services:
   drawio:
     image: jgraph/drawio
-    container_name: drawio
     restart: unless-stopped
     ports:
-      - 8080:8080
-      - 8443:8443
+      - "8080:8080"
+      - "8443:8443"
     environment:
-      PUBLIC_DNS: domain
-      ORGANISATION_UNIT: unit
-      ORGANISATION: org
-      CITY: city
-      STATE: state
-      COUNTRY_CODE: country
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://domain:8080 || exit 1"]
-      interval: 1m30s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
-
+      # Deployment URL, with a trailing slash
+      DRAWIO_SERVER_URL: ${DRAWIO_SERVER_URL:-}
+      DRAWIO_BASE_URL: ${DRAWIO_BASE_URL:-}
+      DRAWIO_VIEWER_URL: ${DRAWIO_VIEWER_URL:-}
+      DRAWIO_LIGHTBOX_URL: ${DRAWIO_LIGHTBOX_URL:-}
+      DRAWIO_CSP_HEADER: ${DRAWIO_CSP_HEADER:-}
+      DRAWIO_USE_HTTP: ${DRAWIO_USE_HTTP:-}
+      # Editor configuration
+      DRAWIO_CONFIG: ${DRAWIO_CONFIG:-}
+      DRAWIO_CONFIG_FILE: ${DRAWIO_CONFIG_FILE:-}
+      DRAWIO_LANG: ${DRAWIO_LANG:-}
+      # Google Drive
+      DRAWIO_GOOGLE_CLIENT_ID: ${DRAWIO_GOOGLE_CLIENT_ID:-}
+      DRAWIO_GOOGLE_CLIENT_SECRET: ${DRAWIO_GOOGLE_CLIENT_SECRET:-}
+      DRAWIO_GOOGLE_APP_ID: ${DRAWIO_GOOGLE_APP_ID:-}
+      DRAWIO_GOOGLE_VIEWER_CLIENT_ID: ${DRAWIO_GOOGLE_VIEWER_CLIENT_ID:-}
+      DRAWIO_GOOGLE_VIEWER_CLIENT_SECRET: ${DRAWIO_GOOGLE_VIEWER_CLIENT_SECRET:-}
+      DRAWIO_GOOGLE_VIEWER_APP_ID: ${DRAWIO_GOOGLE_VIEWER_APP_ID:-}
+      # Microsoft OneDrive
+      DRAWIO_MSGRAPH_CLIENT_ID: ${DRAWIO_MSGRAPH_CLIENT_ID:-}
+      DRAWIO_MSGRAPH_CLIENT_SECRET: ${DRAWIO_MSGRAPH_CLIENT_SECRET:-}
+      DRAWIO_MSGRAPH_TENANT_ID: ${DRAWIO_MSGRAPH_TENANT_ID:-}
+      # GitLab
+      DRAWIO_GITLAB_ID: ${DRAWIO_GITLAB_ID:-}
+      DRAWIO_GITLAB_SECRET: ${DRAWIO_GITLAB_SECRET:-}
+      DRAWIO_GITLAB_URL: ${DRAWIO_GITLAB_URL:-}

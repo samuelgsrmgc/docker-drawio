@@ -1,6 +1,6 @@
 ## Nextcloud with draw.io app and self-hosted draw.io
 
-This docker-compose file will install Nextcloud, MariaDB, draw.io, and draw.io export server. All behind Nginx reverse proxy and secured with Let's Encrypt.
+This docker-compose file will install Nextcloud, MariaDB and draw.io, all behind an Nginx reverse proxy and secured with Let's Encrypt.
 Then the `after-install.sh` script installs and configures draw.io app into Nextcloud.
 
 The docker-compose file depends on https://blog.ssdnodes.com/blog/installing-nextcloud-docker/
@@ -16,14 +16,14 @@ The docker-compose file depends on https://blog.ssdnodes.com/blog/installing-nex
 1. Create a directory to include Nextcloud. MariaDB, Nginx data.
     
     ```
-    mxkdir nextcloud-drawio
+    mkdir nextcloud-drawio
     cd nextcloud-drawio
     ```
 1. Download `docker-compose.yml` and `after-install.sh` files from this repository folder.
     
     ```
-    wget https://raw.githubusercontent.com/jgraph/docker-drawio/master/nextcloud/docker-compose.yml
-    wget https://raw.githubusercontent.com/jgraph/docker-drawio/master/nextcloud/after-install.sh
+    wget https://raw.githubusercontent.com/jgraph/docker-drawio/dev/nextcloud/docker-compose.yml
+    wget https://raw.githubusercontent.com/jgraph/docker-drawio/dev/nextcloud/after-install.sh
     chmod +x after-install.sh
     ```
 1. Edit the docker-compose file to set the domains and LE email. 

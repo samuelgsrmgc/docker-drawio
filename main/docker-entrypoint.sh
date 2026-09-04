@@ -40,12 +40,6 @@ echo " 	    var t = document.getElementsByTagName('meta')[0];" >> $CATALINA_HOME
 echo "      t.parentNode.insertBefore(s, t);" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "  } catch (e) {} // ignore" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "})();" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-#Overrides of global vars need to be pre-loaded
-if [[ "${DRAWIO_SELF_CONTAINED}" ]]; then
-    echo "window.EXPORT_URL = '/service/0'; //This points to ExportProxyServlet which uses the local export server at port 8000. This proxy configuration allows https requests to the export server via Tomcat." >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-elif [[ "${EXPORT_URL}" ]]; then
-    echo "window.EXPORT_URL = '/service/0';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
-fi
 #DRAWIO_SERVER_URL is the deployment URL with a trailing slash, e.g. https://www.example.com/drawio/
 #DRAWIO_BASE_URL is the same URL without the trailing slash, used by the viewer/lightbox/embed code paths.
 #Either may be set on its own; the other is derived from it. If both are set, both are used as given.

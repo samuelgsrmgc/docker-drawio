@@ -1,20 +1,19 @@
 [![Build Status](https://github.com/jgraph/docker-drawio/workflows/Docker%20Image%20CI/badge.svg)](https://github.com/jgraph/docker-drawio/actions)
-[![Build Status](https://github.com/jgraph/docker-drawio/workflows/Docker%20image-export%20CI/badge.svg)](https://github.com/jgraph/docker-drawio/actions)
 
 
 ## Introduction
 
-[draw.io](https://github.com/jgraph/drawio) is a whiteboarding / diagramming software application. This project contains various docker implementations of draw.io and associated tools:
+[draw.io](https://github.com/jgraph/drawio) is a whiteboarding / diagramming software application. This project packages draw.io for Docker:
 
-* draw.io docker image that is always up-to-date with draw.io releases
-* draw.io export server image which allow exporting draw.io diagrams to pdf and images
-* docker-compose to run draw.io with the export server
-* docker-compose to run draw.io integrated within nextcloud
-* docker-compose to run draw.io self-contained without any dependency on diagrams.net website (with the export server, Google Drive support, and OneDrive support)
+* `jgraph/drawio`, a draw.io docker image that is always up-to-date with draw.io releases
+* a [docker-compose](docker-compose.yml) to run draw.io with the Google Drive, Microsoft OneDrive and GitLab integrations
+* a [docker-compose](nextcloud/) to run draw.io integrated within Nextcloud
+
+The separate export server image (`jgraph/export-server`) has reached end of life and is no longer built or configured by this project, see [Removed variables](#removed-variables).
 
 ## Description
 
-The Dockerfile builds from `tomcat:9-jre11` (see <https://hub.docker.com/_/tomcat/>)
+The Dockerfile builds from `tomcat:9.0-jdk11-temurin` (see <https://hub.docker.com/_/tomcat/>)
 
 **Note: Starting from version 16.5.3, alpine and debian images are no longer maintained. We changed to a single image that uses the tomcat image with the least security vulnerabilities.**
 
@@ -41,13 +40,34 @@ If you're running `Docker Toolbox` then start a web browser session to <http://1
 
 > `?offline=1` is a security feature that disables support of cloud storage.
 
+## Docker Compose
+
+[`docker-compose.yml`](docker-compose.yml) runs the same image and passes every `DRAWIO_*` variable listed under [Environment variables](#environment-variables) through from the environment, so the configuration lives in a `.env` file next to it:
+
+```
+DRAWIO_SERVER_URL=https://drawio.example.com/
+DRAWIO_GITLAB_ID=...
+DRAWIO_GITLAB_SECRET=...
+DRAWIO_GITLAB_URL=https://gitlab.example.com
+```
+
+```bash
+docker compose up -d
+```
+
+Variables you leave unset are passed through empty, which the image treats as unset.
+
+### AWS ECS
+
+The compose file can be deployed to AWS ECS by following this [tutorial](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-cli-tutorial-ec2.html) (we recommend EC2 deployment). Change the port mapping to 80 and 443 in `docker-compose.yml` to support the standard HTTP and HTTPS ports, allow access to these ports in the security group inbound rules, and set `DRAWIO_SERVER_URL` to your public deployment URL.
+
 ## Running as a non-root user
 
-Both images already run as a dedicated non-root user by default — `tomcat` (UID `1001`, GID `999`) in `jgraph/drawio` and `pptruser` (UID `999`) in `jgraph/export-server` — so nothing needs to be configured just to avoid root.
+The image already runs as a dedicated non-root user by default — `tomcat` (UID `1001`, GID `999`) — so nothing needs to be configured just to avoid root.
 
 [Users have reported](https://github.com/jgraph/docker-drawio/issues/210) it working with [rootless] Podman, but we haven't tested ourselves.
 
-To run under a *different* UID (a compose `user:` override, Kubernetes `runAsUser`, or OpenShift's arbitrary UIDs), the user must carry the **root group (GID `0`)**. Configuration is applied at startup by rewriting files inside the container ([`main/docker-entrypoint.sh`](main/docker-entrypoint.sh)), and both images grant GID `0` owner-equivalent permissions on those paths, following the OpenShift image guidelines. Membership of group `0` grants no other privileges — it is not root.
+To run under a *different* UID (a compose `user:` override, Kubernetes `runAsUser`, or OpenShift's arbitrary UIDs), the user must carry the **root group (GID `0`)**. Configuration is applied at startup by rewriting files inside the container ([`main/docker-entrypoint.sh`](main/docker-entrypoint.sh)), and the image grants GID `0` owner-equivalent permissions on those paths, following the OpenShift image guidelines. Membership of group `0` grants no other privileges — it is not root.
 
 ```bash
 docker run -it --rm -p 8080:8080 --user 1234:0 jgraph/drawio
@@ -73,9 +93,9 @@ securityContext:
   runAsGroup: 0        # or keep your own runAsGroup and add supplementalGroups: [0]
 ```
 
-On OpenShift, restricted SCCs already run pods with an arbitrary UID and GID `0`, so both images work there without any extra configuration.
+On OpenShift, restricted SCCs already run pods with an arbitrary UID and GID `0`, so the image works there without any extra configuration.
 
-Without GID `0` the main container still starts, but the entrypoint logs a warning and skips all runtime configuration (`DRAWIO_*` variables, SSL, context path), and the export server fails to render because Chrome cannot write its profile directory.
+Without GID `0` the container still starts, but the entrypoint logs a warning and skips all runtime configuration (`DRAWIO_*` variables, SSL, context path).
 
 > `readOnlyRootFilesystem: true` is not currently supported, since configuration is written into the webapp at startup.
 
@@ -103,6 +123,7 @@ All container behaviour is controlled by environment variables, processed by [`m
 * **DRAWIO_BASE_URL**: (Optional, backwards-compat) Same URL **without** a trailing slash, used by the viewer/lightbox/embed code paths. Only needed if `DRAWIO_SERVER_URL` is not set; the entrypoint derives whichever one is missing. If both are set, both pass through unchanged.
 * **DRAWIO_VIEWER_URL**: Optional URL of a hosted viewer JS bundle, e.g. `https://drawio.example.com/js/viewer.min.js`.
 * **DRAWIO_LIGHTBOX_URL**: Optional lightbox URL, e.g. `https://drawio.example.com`.
+* **DRAWIO_USE_HTTP**: (Optional and INSECURE) If your setup uses http only and you understand the risks (for example, sending OAuth tokens over http), set `DRAWIO_USE_HTTP=1`. **Caution: Use at your own risk**.
 
 ### Editor configuration
 
@@ -127,39 +148,30 @@ DRAWIO_CONFIG={"enableAi":true,"claudeApiKey":"sk-ant-...","aiModels":[{"name":"
 
 ### Custom fonts
 
-Fonts are needed in two different places, configured independently — mounting font files into this container does **not** make them appear in the editor:
+The editor renders text in the user's browser, which can only use fonts installed on the viewer's device or loaded over HTTP(S) — mounting font files into this container does **not** make them appear in the editor. Make a web font selectable in the font picker with `defaultFonts` (or `customFonts`, which prepends to the list) inside `DRAWIO_CONFIG`:
 
-* **Editor fonts (browser)**: the editor renders text in the user's browser, which can only use fonts installed on the viewer's device or loaded over HTTP(S). Make a web font selectable in the font picker with `defaultFonts` (or `customFonts`, which prepends to the list) inside `DRAWIO_CONFIG`:
+```bash
+DRAWIO_CONFIG={"defaultFonts":["Helvetica",{"fontFamily":"My Font","fontUrl":"https://drawio.example.com/fonts/MyFont.woff2"}]}
+```
 
-  ```bash
-  DRAWIO_CONFIG={"defaultFonts":["Helvetica",{"fontFamily":"My Font","fontUrl":"https://drawio.example.com/fonts/MyFont.woff2"}]}
-  ```
+Plain string entries must be installed on every viewer's device; entries with `fontFamily` + `fontUrl` (a direct font file or a Google-Fonts-style CSS URL) are downloaded by the browser, and the URL is stored in the diagram so other viewers and exports can resolve it — use an absolute URL reachable from every browser that will open the diagram. To serve font files from this container, mount them into the webapp: `-v ./fonts:/usr/local/tomcat/webapps/draw/fonts` serves them at `https://your-host/fonts/…`.
 
-  Plain string entries must be installed on every viewer's device; entries with `fontFamily` + `fontUrl` (a direct font file or a Google-Fonts-style CSS URL) are downloaded by the browser, and the URL is stored in the diagram so other viewers and exports can resolve it — use an absolute URL reachable from every browser that will open the diagram. To serve font files from this container, mount them into the webapp: `-v ./fonts:/usr/local/tomcat/webapps/draw/fonts` serves them at `https://your-host/fonts/…`.
-
-  `fontCss` (also inside `DRAWIO_CONFIG`) injects raw `@font-face` rules; it makes text using that family render, but does **not** add anything to the font picker — combine it with a plain font name in `defaultFonts`/`customFonts`, or just use a `fontUrl` entry instead. The default CSP allows fonts from any origin (`font-src *`); if you override **DRAWIO_CSP_HEADER**, keep your font host allowed there.
-
-* **Export fonts (server-side rendering)**: PDF/image export renders with the fonts installed inside the *export-server* container, not this one. Mount extra fonts at `/usr/share/fonts/drawio` on the `jgraph/export-server` container — see [`image-export/README.md`](image-export/README.md) and [`self-contained/README.md`](self-contained/README.md). This affects exported files only; it does not add fonts to the editor.
+`fontCss` (also inside `DRAWIO_CONFIG`) injects raw `@font-face` rules; it makes text using that family render, but does **not** add anything to the font picker — combine it with a plain font name in `defaultFonts`/`customFonts`, or just use a `fontUrl` entry instead. The default CSP allows fonts from any origin (`font-src *`); if you override **DRAWIO_CSP_HEADER**, keep your font host allowed there.
 
 See the draw.io documentation on [external fonts](https://www.drawio.com/docs/manual/text/external-fonts/) for how fonts behave in the editor itself.
 
-### Export server integration
-
-* **DRAWIO_SELF_CONTAINED**: Set to `1` to route export requests through Tomcat's `ExportProxyServlet` (`/service/0`) instead of calling the export server directly. Use this when the export server is only reachable inside the docker network.
-* **EXPORT_URL**: Full URL of the export server as reachable from this container, e.g. `http://image-export:8000/`. Setting it makes the webapp post exports to `/service/0`, where `ExportProxyServlet` forwards them to this URL — the servlet reads the variable directly; nothing is configured in `web.xml`. With `DRAWIO_SELF_CONTAINED=1` the `/service/0` routing is enabled automatically, but the servlet still needs `EXPORT_URL`.
-
 ### Google Drive integration
 
-See [`self-contained/README.md`](self-contained/README.md#google-drive) for how to register the OAuth app.
+Create a project at the [Google API Console](https://console.developers.google.com/apis) and create [Credentials](https://console.developers.google.com/apis/credentials) of type "Create OAuth client ID" -> Web Application. This option is disabled until you create the "OAuth consent screen" from the link in the warning message bar; there, enter the "Application name" and "Authorized domains". In the "Create OAuth client ID" configuration, set "Authorized redirect URIs" to `[your-draw.io-hostname]/google` and "Authorized JavaScript origins" to your hostname. For example, if you host draw.io at `https://drawio.example.com`, the redirect URI is `https://drawio.example.com/google` and the JavaScript origin is `https://drawio.example.com`.
 
 * **DRAWIO_GOOGLE_CLIENT_ID**: OAuth client ID. Unset = Google Drive integration disabled.
 * **DRAWIO_GOOGLE_CLIENT_SECRET**: OAuth client secret.
-* **DRAWIO_GOOGLE_APP_ID**: Google project number (the numeric prefix of the client ID, before the first `-`).
-* **DRAWIO_GOOGLE_VIEWER_CLIENT_ID** / **DRAWIO_GOOGLE_VIEWER_CLIENT_SECRET** / **DRAWIO_GOOGLE_VIEWER_APP_ID**: Optional separate read-only credentials for a viewer deployment.
+* **DRAWIO_GOOGLE_APP_ID**: Google project number (the numeric prefix of the client ID, before the first `-`). For example, if the client ID is `123456789-abc...`, the app ID is `123456789`.
+* **DRAWIO_GOOGLE_VIEWER_CLIENT_ID** / **DRAWIO_GOOGLE_VIEWER_CLIENT_SECRET** / **DRAWIO_GOOGLE_VIEWER_APP_ID**: Optional separate read-only credentials for a viewer deployment. If you also host a draw.io viewer, create another client ID for it; the viewer has read-only access to Drive files.
 
 ### Microsoft OneDrive integration
 
-See [`self-contained/README.md`](self-contained/README.md#microsoft-onedrive) for redirect-URI requirements.
+Register an application to use the MS Graph APIs, see [how to register your app](https://docs.microsoft.com/en-us/graph/auth-register-app-v2) and [how to use the APIs](https://docs.microsoft.com/en-us/graph/use-the-api). In the Azure portal select the new app, then "Authentication", and add two redirect URIs: `[your-draw.io-hostname]/microsoft` and `[your-draw.io-hostname]/onedrive3.html`. For example, if you host draw.io at `https://drawio.example.com`, the redirect URIs are `https://drawio.example.com/microsoft` and `https://drawio.example.com/onedrive3.html`. In "Advanced settings" on the same page, enable the "Access tokens" and "ID tokens" check boxes. Create the client secret under "Certificates & secrets" ("+ New client secret"); the "Application (client) ID" is on the "Overview" page.
 
 * **DRAWIO_MSGRAPH_CLIENT_ID**: Azure app client ID. Unset = OneDrive integration disabled.
 * **DRAWIO_MSGRAPH_CLIENT_SECRET**: Azure app client secret.
@@ -167,11 +179,15 @@ See [`self-contained/README.md`](self-contained/README.md#microsoft-onedrive) fo
 
 ### GitLab integration
 
-See [`self-contained/README.md`](self-contained/README.md#gitlab) for OAuth-app setup.
+Create a new OAuth app in GitLab (Settings -> Applications). Set the "Redirect URI" to `[your-draw.io-hostname]/gitlab`, e.g. `https://drawio.example.com/gitlab`, and the "Scopes" to `api`, `read_repository` and `write_repository`.
 
 * **DRAWIO_GITLAB_ID**: OAuth application ID. Unset = GitLab integration disabled.
 * **DRAWIO_GITLAB_SECRET**: OAuth application secret.
-* **DRAWIO_GITLAB_URL**: GitLab base URL **without** any path, e.g. `https://gitlab.com` or `https://gitlab.example.com`. The entrypoint appends `/oauth/token` itself for server-side auth, and uses this value as the base of the client-side `/oauth/authorize` URL — adding a path here breaks both. When this is set to anything other than `https://gitlab.com` the entrypoint also writes `Editor.enableCustomGitLabUrl = true;` into `PostConfig.js`, which is required by the client to allow self-hosted instances.
+* **DRAWIO_GITLAB_URL**: GitLab base URL **without** any path, e.g. `https://gitlab.com` or `https://gitlab.example.com`. The entrypoint appends `/oauth/token` itself for server-side auth, and uses this value as the base of the client-side `/oauth/authorize` URL — adding a path here breaks both. When this is set to anything other than `https://gitlab.com` the entrypoint also writes `Editor.enableCustomGitLabUrl = true;` into `PostConfig.js`, which is required by the client to allow self-hosted instances; without it the OAuth flow fails with an "access denied" dialog before any request is made.
+
+### Removed variables
+
+* **EXPORT_URL** and **DRAWIO_SELF_CONTAINED** no longer have any effect. They pointed the editor at the separate `jgraph/export-server` image, which has reached end of life and is no longer built from this repository.
 
 ## HTTPS SSL Certificate via Let's Encrypt
 
@@ -188,10 +204,6 @@ See [`self-contained/README.md`](self-contained/README.md#gitlab) for OAuth-app 
 docker run -it -m1g -v "/opt/docker/drawiodata/letsencrypt-log:/var/log/letsencrypt/" -v "/opt/docker/drawiodata/letsencrypt-etc:/etc/letsencrypt/" -v "/opt/docker/drawiodata/letsencrypt-lib:/var/lib/letsencrypt" -e LETS_ENCRYPT_ENABLED=true -e PUBLIC_DNS=drawio.example.com --rm --name="draw" -p 80:80 -p 443:8443 jgraph/drawio
 ```
 Notice that mapping port 80 to container's port 80 allows certbot to work in stand-alone mode. Mapping port 443 to container's port 8443 allows the container tomcat to serve https requests directly.
-
-## Changing draw.io configuration
-
-All draw.io configuration is driven by the `DRAWIO_*` environment variables listed in the [Environment variables](#environment-variables) section above. For integrations that need an OAuth app (Google Drive, Microsoft OneDrive, GitLab), the step-by-step app-registration instructions live in [`self-contained/README.md`](self-contained/README.md).
 
 ## Reference
 
