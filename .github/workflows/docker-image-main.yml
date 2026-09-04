@@ -49,4 +49,6 @@ jobs:
           exit 1
         fi
         docker exec drawio-nonroot grep -q "window.DRAWIO_SERVER_URL" /usr/local/tomcat/webapps/draw/js/PreConfig.js
+        # No export server ships with the image; the editor must be told so
+        docker exec drawio-nonroot grep -q "window.EXPORT_URL = null" /usr/local/tomcat/webapps/draw/js/PreConfig.js
         docker exec drawio-nonroot /bin/bash -c "curl -sf -o /dev/null http://localhost:8080"

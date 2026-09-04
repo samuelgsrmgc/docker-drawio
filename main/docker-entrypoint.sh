@@ -80,6 +80,11 @@ echo "window.DRAWIO_VIEWER_URL = '${DRAWIO_VIEWER_URL}';" >> $CATALINA_HOME/weba
 #DRAWIO_LIGHTBOX_URL Replace with your lightbox URL, eg. https://www.example.com
 echo "window.DRAWIO_LIGHTBOX_URL = '${DRAWIO_LIGHTBOX_URL}';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 echo "window.DRAW_MATH_URL = 'math4/es5';" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
+#No export server ships with this image. null tells the editor that no export service exists,
+#so Export as > PDF uses the browser's print dialog and the server-rendered PNG/JPEG export is
+#hidden. Leaving it unset would fall back to convert.diagrams.net, which rejects requests from
+#other hosts, and the editor would post every export to a dead URL in a new tab.
+echo "window.EXPORT_URL = null;" >> $CATALINA_HOME/webapps/draw/js/PreConfig.js
 #Custom draw.io configurations. For more details, https://www.drawio.com/doc/faq/configure-diagram-editor
 #DRAWIO_CONFIG_FILE names a JSON file inside the container (bind mount, ConfigMap) and takes
 #precedence over the inline DRAWIO_CONFIG value. The value is written verbatim into PreConfig.js,

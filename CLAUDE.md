@@ -4,7 +4,7 @@
 
 Docker packaging for [draw.io](https://github.com/jgraph/drawio). Produces the `jgraph/drawio` Docker image.
 
-The separate export server image (`jgraph/export-server`, formerly `image-export/`) is end-of-life and has been removed. Do not reintroduce `EXPORT_URL` / `DRAWIO_SELF_CONTAINED` handling or references to it.
+The separate export server image (`jgraph/export-server`, formerly `image-export/`) is end-of-life and has been removed. Do not reintroduce `EXPORT_URL` / `DRAWIO_SELF_CONTAINED` handling or references to it. The one exception is the fixed `window.EXPORT_URL = null;` line the entrypoint writes into `PreConfig.js`: it tells the editor that no export service exists, so PDF export falls back to the print dialog instead of posting to convert.diagrams.net (which rejects other hosts). Keep that line; it is not export-server handling.
 
 ## Repository structure
 

@@ -187,7 +187,7 @@ Create a new OAuth app in GitLab (Settings -> Applications). Set the "Redirect U
 
 ### Removed variables
 
-* **EXPORT_URL** and **DRAWIO_SELF_CONTAINED** no longer have any effect. They pointed the editor at the separate `jgraph/export-server` image, which has reached end of life and is no longer built from this repository.
+* **EXPORT_URL** and **DRAWIO_SELF_CONTAINED** no longer have any effect. They pointed the editor at the separate `jgraph/export-server` image, which has reached end of life and is no longer built from this repository. The entrypoint writes `window.EXPORT_URL = null` into `PreConfig.js` instead, which tells the editor that no export service exists: *Export as > PDF* uses the browser's print dialog (so the *Include a copy of my diagram* option is not offered for PDF) and the server-rendered PNG/JPEG export is hidden. PNG, JPEG and SVG export rendered in the browser are unaffected.
 
 ## HTTPS SSL Certificate via Let's Encrypt
 
